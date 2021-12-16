@@ -1,0 +1,74 @@
+import { uiSliceActions } from './ui-slice';
+import { cartActions } from './cart-slice';
+
+export const fetchCartData = () => {
+    return async (dispatch) => {
+        const fetchData = async () => {
+            const response = await fetch('YOUR FIREBASE URL');
+            
+            if(!response.ok) {
+                throw new Error ('Could not fetch cart data!');
+            }
+
+            const data = await response.json();
+
+            return data;
+        };
+
+        try {
+            const cartData = await fetchData();
+            dispatch(cartActions.replaceCart({
+                items: cartData.items || [],
+                totalQuantity: cartData.totalQuantity
+            }));
+            //firebase에 items가 하나도 없는 상태라면 undefined 상태이므로 items를 find() 할 수 없기 때문에 빈 배열이라도 있다고 설정해줘야 함
+        } catch(error) {
+            dispatch(uiSliceActions.showNotification({
+                status: 'error',
+                title: 'Error!',
+                message: 'Fetching cart data failed!'
+            }));
+        }
+    };
+};
+
+export const sendCartData = (cart) => {
+    return async (dispatch) => {
+        dispatch(uiSliceActions.showNotification({
+            status: 'pending',
+            title: 'Sending...',
+            message: 'Sending cart data!'
+        }));
+
+        const sendRequest = async () => {
+            const response = await fetch('YOUR FIREBASE URL', {
+                method: 'PUT', // 새로운 데이터가 데이터 리스트에 추가되지 않고 기존 데이터를 덮어쓰는 방식
+                body: JSON.stringify({
+                    items: cart.items,
+                    totalQuantity: cart.totalQuantity
+                }) 
+                //redux에서 가져온 cart를 json 데이터로 변환하고 요청의 일부로 보냄
+            });
+
+            if(!response.ok) {
+                throw new Error ('Sending cart data failed.');
+            };
+        };
+
+        try {
+            await sendRequest();
+
+            dispatch(uiSliceActions.showNotification({
+                status: 'success',
+                title: 'Success!',
+                message: 'Sent cart data successfully!'
+            }));
+        } catch(error) {
+            dispatch(uiSliceActions.showNotification({
+                status: 'error',
+                title: 'Error!',
+                message: 'Sending cart data failed!'
+            }));
+        }
+    }
+};
